@@ -369,3 +369,13 @@ Tensor THSVision_nms(const Tensor dets, const Tensor scores, double iou_threshol
 
     CATCH_TENSOR(nms(*dets, *scores, iou_threshold));
 }
+
+Tensor THSVision_roi_align(const Tensor input, const Tensor rois, double spatial_scale, long pooled_height, long pooled_width, long sampling_ratio, bool aligned)
+{
+    typedef at::Tensor(*TorchVisionFunc)(at::Tensor&, at::Tensor&, double, long, long, long, bool);
+    auto roi_align = (TorchVisionFunc)LoadNativeSymbol("libtorchvision.dll", "?roi_align@ops@vision@@YA?AVTensor@at@@AEBV34@0N_J11_N@Z");
+    if (roi_align == NULL)
+        return NULL;
+
+    CATCH_TENSOR(roi_align(*input, *rois, spatial_scale, pooled_height, pooled_width, sampling_ratio, aligned));
+}

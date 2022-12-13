@@ -44,5 +44,8 @@ namespace TorchSharp
 
         [DllImport("LibTorchSharp")]
         internal static extern IntPtr THSVision_nms(IntPtr dets, IntPtr scores, double iou_threshold);
+
+        [DllImport("LibTorchSharp")]
+        internal static extern IntPtr THSVision_roi_align(IntPtr input, IntPtr rois, double spatial_scale, long pooled_height, long pooled_width, long sampling_ratio, bool aligned);
     }
 }
