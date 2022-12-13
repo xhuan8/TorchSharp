@@ -105,8 +105,7 @@ namespace TorchSharp
 
                 var norm_params = new List<Tensor>();
                 var other_params = new List<Tensor>();
-                foreach (var named_module in model.named_modules()) {
-                    var module = named_module.module;
+                foreach (var module in model.modules()) {
                     var named_children = module.named_children().GetEnumerator();
                     if (named_children.MoveNext()) {
                         foreach (var p in module.named_parameters(false))

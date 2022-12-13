@@ -9,6 +9,8 @@ using TorchSharp.Modules;
 using static TorchSharp.torch;
 using static TorchSharp.Utils.LEB128Codec;
 using static TorchSharp.PInvoke.LibTorchSharp;
+using System.Text.RegularExpressions;
+using Google.Protobuf.WellKnownTypes;
 
 namespace TorchSharp
 {
@@ -28,6 +30,8 @@ namespace TorchSharp
             /// </remarks>
             public class Module : IDisposable
             {
+                private const string _EXTRA_STATE_KEY_SUFFIX = "_extra_state";
+
                 /// <summary>
                 /// Class wrapping PyTorch's module object reference.
                 /// </summary>
@@ -443,6 +447,21 @@ namespace TorchSharp
                 }
 
                 /// <summary>
+                /// Returns an iterator over module buffers.
+                /// </summary>
+                /// <param name="recurse">
+                /// if True, then yields buffers of this module
+                /// and all submodules.Otherwise, yields only buffers that
+                /// are direct members of this module.
+                /// </param>
+                /// <returns></returns>
+                public virtual IEnumerable<Tensor> buffers(bool recurse = true)
+                {
+                    foreach (var (_, buffer) in named_buffers())
+                        yield return buffer;
+                }
+
+                /// <summary>
                 /// Returns an enumerable of module buffers, yielding both the name of the buffer as well as the buffer itself.
                 /// </summary>
                 /// <param name="recurse">If true, then yields buffers of this module and all submodules. Otherwise, yields only buffers that are direct members of this module.</param>
@@ -467,6 +486,16 @@ namespace TorchSharp
                 /// </summary>
                 /// <returns>(string, Module) – Tuple containing a name and child module</returns>
                 public virtual IEnumerable<(string name, Module module)> named_children() => _internal_submodules;
+
+                /// <summary>
+                /// Returns an enumerable of all modules in the network.
+                /// </summary>
+                /// <returns></returns>
+                public virtual IEnumerable<Module> modules()
+                {
+                    foreach (var (_, module) in named_modules())
+                        yield return module;
+                }
 
                 /// <summary>
                 /// Returns an enumerable of all modules in the network, yielding both the name of the module as well as the module itself.
@@ -514,6 +543,86 @@ namespace TorchSharp
                     }
 
                     return destination;
+                }
+
+                /// <summary>
+                /// Copies parameters and buffers from :attr:`state_dict` into only
+                /// this module, but not its descendants.This is called on every submodule
+                /// in :meth:`~torch.nn.Module.load_state_dict`. Metadata saved for this
+                /// module in input :attr:`state_dict` is provided as :attr:`local_metadata`.
+                /// For state dicts without metadata, :attr:`local_metadata` is empty.
+                /// Subclasses can achieve class-specific backward compatible loading using
+                /// the version number at `local_metadata.get("version", None)`.
+                /// </summary>
+                /// <param name="state_dict">a dict containing parameters and persistent buffers.</param>
+                /// <param name="prefix">the prefix for parameters and buffers used in this module</param>
+                /// <param name="local_metadata">a dict containing the metadata for this module.</param>
+                /// <param name="strict">whether to strictly enforce that the keys in
+                /// :attr:`state_dict` with :attr:`prefix` match the names of
+                /// parameters and buffers in this module</param>
+                /// <returns>
+                /// missing_keys (list of str): if ``strict=True``, add missing keys to this list
+                /// unexpected_keys(list of str): if ``strict=True``, add unexpected keys to this list
+                /// error_msgs(list of str): error messages should be added to this list,
+                /// and will be reported together in:meth:`~torch.nn.Module.load_state_dict`
+                /// </returns>
+                public virtual (IList<string> missing_keys, IList<string> unexpected_keyes, IList<string> error_msgs) _load_from_state_dict(
+                    Dictionary<string, Tensor> state_dict, string prefix, Dictionary<string, object> local_metadata,
+                    bool strict)
+                {
+                    List<string> error_msgs = new List<string>();
+                    List<string> missing_keys = new List<string>();
+                    List<string> unexpected_keys = new List<string>();
+
+                    var local_name_params = this._internal_buffers;
+                    foreach (var item in this._internal_params)
+                        local_name_params.Add(item);
+                    var local_state = new Utils.OrderedDict<string, Tensor>();
+                    foreach (var item in local_name_params)
+                        if (item.Item2 is not null)
+                            local_state.Add(item);
+
+                    foreach (var (name, param) in local_state) {
+                        var key = prefix + name;
+                        if (state_dict.ContainsKey(key)) {
+                            var input_param = state_dict[key];
+
+                            input_param = input_param[0];
+
+                            if (input_param.shape != param.shape) {
+                                //# local shape should match the one in checkpoint
+                                error_msgs.Add(string.Format("size mismatch for {0}: copying a param with shape {1} from checkpoint, " +
+                                                  "the shape in current model is {2}.", key, input_param.shape, param.shape));
+                                continue;
+                            }
+                            try {
+                                using (torch.no_grad())
+                                    param.copy_(input_param);
+                            } catch (Exception ex) {
+                                error_msgs.Add(string.Format("While copying the parameter named \"{}\", " +
+                                                  "whose dimensions in the model are {0} and " +
+                                                  "whose dimensions in the checkpoint are {1}, " +
+                                                  "an exception occurred : {2}.",
+                                                  key, param.size(), input_param.size(), ex.Message));
+                            }
+                        } else if (strict)
+                            missing_keys.Add(key);
+                    }
+
+                    var extra_state_key = prefix + _EXTRA_STATE_KEY_SUFFIX;
+
+                    if (strict) {
+                        foreach (var key in state_dict.Keys) {
+                            if (key.StartsWith(prefix) && key != extra_state_key) {
+                                var input_name = key.Substring(prefix.Length);
+                                input_name = input_name.Split(new char[] { '.' }, 1)[0];  //# get the name of param/buffer/child
+                                if (!this._internal_submodules.ContainsKey(input_name) && !local_state.ContainsKey(input_name))
+                                    unexpected_keys.Add(key);
+                            }
+                        }
+                    }
+
+                    return (missing_keys, unexpected_keys, error_msgs);
                 }
 
                 /// <summary>
