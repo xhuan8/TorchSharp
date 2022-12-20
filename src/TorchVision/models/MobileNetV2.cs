@@ -27,7 +27,7 @@ namespace TorchSharp
         /// </summary>
         public class MobileNetV2 : nn.Module<Tensor, Tensor>
         {
-            private class InvertedResidual : nn.Module<Tensor, Tensor>
+            internal class InvertedResidual : nn.Module<Tensor, Tensor>
             {
                 private readonly bool _is_cn;
                 private readonly nn.Module<Tensor, Tensor> conv;
@@ -85,6 +85,10 @@ namespace TorchSharp
                     RegisterComponents();
                 }
 
+                public bool Is_cn => _is_cn;
+
+                public long Out_channels => out_channels;
+
                 public override Tensor forward(Tensor x)
                 {
                     if (this.use_res_connect) {
@@ -98,6 +102,8 @@ namespace TorchSharp
             private readonly nn.Module<Tensor, Tensor> classifier;
             private readonly nn.Module<Tensor, Tensor> features;
             private readonly long last_channel;
+
+            public nn.Module<Tensor, Tensor> Features => features;
 
             internal MobileNetV2(
                 string name,
@@ -201,7 +207,7 @@ namespace TorchSharp
 
             public override Tensor forward(Tensor x)
             {
-                x = this.features.forward(x);
+                x = this.Features.forward(x);
                 // Cannot use "squeeze" as batch-size can be 1
                 x = nn.functional.adaptive_avg_pool2d(x, (1, 1));
                 x = torch.flatten(x, 1);

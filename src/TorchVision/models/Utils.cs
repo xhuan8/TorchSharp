@@ -41,84 +41,6 @@ namespace TorchSharp
             internal static partial class _utils
             {
                 /// <summary>
-                /// Module wrapper that returns intermediate layers from a model
-                /// It has a strong assumption that the modules have been registered
-                /// into the model in the same order as they are used.
-                /// This means that one should **not** reuse the same nn.Module
-                /// twice in the forward if you want this to work.
-                /// Additionally, it is only able to query submodules that are directly
-                /// assigned to the model. So if `model` is passed, `model.feature1` can
-                /// be returned, but not `model.feature1.layer2`.
-                ///
-                ///     >>> m = torchvision.models.resnet18(weights=ResNet18_Weights.DEFAULT)
-                ///     >>> # extract layer1 and layer3, giving as names `feat1` and feat2`
-                ///     >>> new_m = torchvision.models._utils.IntermediateLayerGetter(m,
-                ///     >>>     {'layer1': 'feat1', 'layer3': 'feat2'})
-                ///     >>> out = new_m(torch.rand(1, 3, 224, 224))
-                ///     >>> print([(k, v.shape) for k, v in out.items()])
-                ///     >>>     [('feat1', torch.Size([1, 64, 56, 56])),
-                ///     >>>      ('feat2', torch.Size([1, 256, 14, 14]))]
-                /// </summary>
-                internal class IntermediateLayerGetter : ModuleDict<Module<Tensor, Tensor>>
-                {
-                    private Dictionary<string, string> return_layers;
-
-                    /// <summary>
-                    /// Constructor.
-                    /// </summary>
-                    /// <param name="model">model on which we will extract the features</param>
-                    /// <param name="return_layers">
-                    /// a dict containing the names
-                    ///         of the modules for which the activations will be returned as
-                    ///         the key of the dict, and the value of the dict is the name
-                    ///         of the returned activation (which the user can specify).
-                    /// </param>
-                    public IntermediateLayerGetter(nn.Module model, Dictionary<string, string> return_layers)
-                    {
-                        foreach (var key in return_layers.Keys) {
-                            bool exists = false;
-                            foreach (var (name, _) in model.named_children()) {
-                                if (name == key) {
-                                    exists = true;
-                                    break;
-                                }
-                            }
-                            if (!exists) {
-                                throw new ArgumentException("return_layers are not present in model");
-                            }
-                        }
-                        var orig_return_layers = new Dictionary<string, string>();
-                        foreach (var pair in return_layers)
-                            orig_return_layers[pair.Key] = pair.Value;
-                        var layers = new OrderedDict<string, nn.Module<Tensor, Tensor>>();
-                        foreach (var (name, module) in model.named_children()) {
-                            layers[name] = module as nn.Module<Tensor, Tensor>;
-                            if (return_layers.ContainsKey(name)) {
-                                return_layers.Remove(name);
-                            }
-                            if (return_layers.Count == 0)
-                                break;
-                        }
-                        foreach (var pair in layers)
-                            base.Add(pair);
-                        this.return_layers = orig_return_layers;
-                    }
-
-                    public OrderedDict<string, Tensor> forward(Tensor x)
-                    {
-                        OrderedDict<string, Tensor> @out = new OrderedDict<string, Tensor>();
-                        foreach (var (name, module) in this.items()) {
-                            x = module.forward(x);
-                            if (this.return_layers.ContainsKey(name)) {
-                                string out_name = this.return_layers[name];
-                                @out[out_name] = x;
-                            }
-                        }
-                        return @out;
-                    }
-                }
-
-                /// <summary>
                 /// This function is taken from the original tf repo.
                 /// It ensures that all layers have a channel number that is divisible by 8
                 /// It can be seen here:
@@ -136,6 +58,87 @@ namespace TorchSharp
                     }
                     return new_v;
                 }
+            }
+        }
+    }
+
+    namespace Modules
+    {
+        /// <summary>
+        /// Module wrapper that returns intermediate layers from a model
+        /// It has a strong assumption that the modules have been registered
+        /// into the model in the same order as they are used.
+        /// This means that one should **not** reuse the same nn.Module
+        /// twice in the forward if you want this to work.
+        /// Additionally, it is only able to query submodules that are directly
+        /// assigned to the model. So if `model` is passed, `model.feature1` can
+        /// be returned, but not `model.feature1.layer2`.
+        ///
+        ///     >>> m = torchvision.models.resnet18(weights=ResNet18_Weights.DEFAULT)
+        ///     >>> # extract layer1 and layer3, giving as names `feat1` and feat2`
+        ///     >>> new_m = torchvision.models._utils.IntermediateLayerGetter(m,
+        ///     >>>     {'layer1': 'feat1', 'layer3': 'feat2'})
+        ///     >>> out = new_m(torch.rand(1, 3, 224, 224))
+        ///     >>> print([(k, v.shape) for k, v in out.items()])
+        ///     >>>     [('feat1', torch.Size([1, 64, 56, 56])),
+        ///     >>>      ('feat2', torch.Size([1, 256, 14, 14]))]
+        /// </summary>
+        internal class IntermediateLayerGetter : ModuleDict<Module<Tensor, Tensor>>
+        {
+            private Dictionary<string, string> return_layers;
+
+            /// <summary>
+            /// Constructor.
+            /// </summary>
+            /// <param name="model">model on which we will extract the features</param>
+            /// <param name="return_layers">
+            /// a dict containing the names
+            ///         of the modules for which the activations will be returned as
+            ///         the key of the dict, and the value of the dict is the name
+            ///         of the returned activation (which the user can specify).
+            /// </param>
+            public IntermediateLayerGetter(nn.Module model, Dictionary<string, string> return_layers)
+            {
+                foreach (var key in return_layers.Keys) {
+                    bool exists = false;
+                    foreach (var (name, _) in model.named_children()) {
+                        if (name == key) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists) {
+                        throw new ArgumentException("return_layers are not present in model");
+                    }
+                }
+                var orig_return_layers = new Dictionary<string, string>();
+                foreach (var pair in return_layers)
+                    orig_return_layers[pair.Key] = pair.Value;
+                var layers = new OrderedDict<string, nn.Module<Tensor, Tensor>>();
+                foreach (var (name, module) in model.named_children()) {
+                    layers[name] = module as nn.Module<Tensor, Tensor>;
+                    if (return_layers.ContainsKey(name)) {
+                        return_layers.Remove(name);
+                    }
+                    if (return_layers.Count == 0)
+                        break;
+                }
+                foreach (var pair in layers)
+                    base.Add(pair);
+                this.return_layers = orig_return_layers;
+            }
+
+            public OrderedDict<string, Tensor> forward(Tensor x)
+            {
+                OrderedDict<string, Tensor> @out = new OrderedDict<string, Tensor>();
+                foreach (var (moduleName, module) in this.items()) {
+                    x = module.forward(x);
+                    if (this.return_layers.ContainsKey(moduleName)) {
+                        string out_name = this.return_layers[moduleName];
+                        @out[out_name] = x;
+                    }
+                }
+                return @out;
             }
         }
     }

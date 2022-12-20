@@ -68,7 +68,7 @@ namespace TorchSharp
             /// <summary>
             /// Implemented as described at section 5 of MobileNetV3 paper
             /// </summary>
-            private class InvertedResidual : nn.Module<Tensor, Tensor>
+            internal class InvertedResidual : nn.Module<Tensor, Tensor>
             {
                 private readonly bool _is_cn;
                 private readonly nn.Module<Tensor, Tensor> block;
@@ -139,6 +139,10 @@ namespace TorchSharp
                     RegisterComponents();
                 }
 
+                public bool Is_cn => _is_cn;
+
+                public long Out_channels => out_channels;
+
                 public override Tensor forward(Tensor input)
                 {
                     var result = this.block.forward(input);
@@ -152,6 +156,8 @@ namespace TorchSharp
             private readonly nn.Module<Tensor, Tensor> avgpool;
             private readonly nn.Module<Tensor, Tensor> classifier;
             private readonly nn.Module<Tensor, Tensor> features;
+
+            public nn.Module<Tensor, Tensor> Features => features;
 
             /// <summary>
             /// MobileNet V3 main class
@@ -249,7 +255,7 @@ namespace TorchSharp
 
             public override Tensor forward(Tensor x)
             {
-                x = this.features.forward(x);
+                x = this.Features.forward(x);
                 x = this.avgpool.forward(x);
                 x = torch.flatten(x, 1);
                 x = this.classifier.forward(x);
@@ -336,9 +342,10 @@ namespace TorchSharp
 
             private static Modules.MobileNetV3 _mobilenet_v3(
                 MobileNetV3.InvertedResidualConfig[] inverted_residual_setting,
-                long last_channel)
+                long last_channel,
+                Func<long, nn.Module<Tensor, Tensor>>? norm_layer = null)
             {
-                var model = new MobileNetV3("MobileNetV3", inverted_residual_setting, last_channel);
+                var model = new MobileNetV3("MobileNetV3", inverted_residual_setting, last_channel, norm_layer: norm_layer);
                 return model;
             }
 
@@ -347,10 +354,11 @@ namespace TorchSharp
             /// `Searching for MobileNetV3 https://arxiv.org/abs/1905.02244`.
             /// </summary>
             /// <returns></returns>
-            public static MobileNetV3 mobilenet_v3_large()
+            public static MobileNetV3 mobilenet_v3_large(
+                Func<long, nn.Module<Tensor, Tensor>>? norm_layer = null)
             {
                 var (inverted_residual_setting, last_channel) = _mobilenet_v3_conf("mobilenet_v3_large");
-                return _mobilenet_v3(inverted_residual_setting, last_channel);
+                return _mobilenet_v3(inverted_residual_setting, last_channel, norm_layer: norm_layer);
             }
 
             /// <summary>
@@ -358,10 +366,11 @@ namespace TorchSharp
             /// `Searching for MobileNetV3 https://arxiv.org/abs/1905.02244`.
             /// </summary>
             /// <returns></returns>
-            public static MobileNetV3 mobilenet_v3_small()
+            public static MobileNetV3 mobilenet_v3_small(
+                Func<long, nn.Module<Tensor, Tensor>>? norm_layer = null)
             {
                 var (inverted_residual_setting, last_channel) = _mobilenet_v3_conf("mobilenet_v3_small");
-                return _mobilenet_v3(inverted_residual_setting, last_channel);
+                return _mobilenet_v3(inverted_residual_setting, last_channel, norm_layer: norm_layer);
             }
         }
     }

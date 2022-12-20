@@ -204,6 +204,28 @@ namespace TorchSharp
             {
                 return Modules.ResNet.ResNet152(num_classes, weights_file, skipfc, device);
             }
+
+            public static Modules.ResNet get_resnet(string name, int num_classes = 1000,
+                    string weights_file = null,
+                    bool skipfc = true,
+                    Func<long, nn.Module<Tensor, Tensor>> norm_layer = null,
+                    Device device = null)
+            {
+                switch (name) {
+                case "resnet18":
+                    return resnet18(num_classes, weights_file, skipfc, device);
+                case "resnet34":
+                    return resnet34(num_classes, weights_file, skipfc, device);
+                case "resnet50":
+                    return resnet50(num_classes, weights_file, skipfc, device);
+                case "resnet101":
+                    return resnet101(num_classes, weights_file, skipfc, device);
+                case "resnet152":
+                    return resnet152(num_classes, weights_file, skipfc, device);
+                default:
+                    throw new ArgumentException("Resnet {0} not implemented.", name);
+                }
+            }
         }
     }
 
@@ -230,6 +252,8 @@ namespace TorchSharp
             private readonly Module<Tensor, Tensor> fc;
 
             private int in_planes = 64;
+
+            public int In_planes { get => in_planes; set => in_planes = value; }
 
             public static ResNet ResNet18(int numClasses,
                 string weights_file = null,
@@ -344,8 +368,7 @@ namespace TorchSharp
                             break;
                         }
                     }
-                }
-                else {
+                } else {
 
                     this.load(weights_file, skip: skipfc ? new[] { "fc.weight", "fc.bias" } : null);
                 }

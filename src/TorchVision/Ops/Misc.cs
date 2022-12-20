@@ -12,6 +12,7 @@
 
 using System;
 using System.Collections.Generic;
+using TorchSharp.Ops;
 using static TorchSharp.torch;
 
 #nullable enable
@@ -164,6 +165,11 @@ namespace TorchSharp
                     rank: 3);
             }
 
+            public static nn.Module<Tensor, Tensor> FrozenBatchNorm2d(long num_features)
+            {
+                return new Ops.FrozenBatchNorm2d(string.Empty, num_features);
+            }
+
             internal class SqueezeExcitation : torch.nn.Module<Tensor, Tensor>
             {
                 private readonly nn.Module<Tensor, Tensor> avgpool;
@@ -211,6 +217,54 @@ namespace TorchSharp
                     var scale = this._scale(input);
                     return scale * input;
                 }
+            }
+        }
+    }
+
+    namespace Ops
+    {
+        /// <summary>
+        /// BatchNorm2d where the batch statistics and the affine parameters are fixed.
+        /// </summary>
+        public class FrozenBatchNorm2d : torch.nn.Module<Tensor, Tensor>
+        {
+            private float eps;
+
+            /// <summary>
+            /// Constructor.
+            /// </summary>
+            /// <param name="name">Name</param>
+            /// <param name="num_features">Number of features ``C`` from an expected input of size ``(N, C, H, W)``</param>
+            /// <param name="eps">a value added to the denominator for numerical stability. Default: 1e-5</param>
+            public FrozenBatchNorm2d(string name, long num_features, float eps = 1e-5f) : base(name)
+            {
+                this.eps = eps;
+                this.register_buffer("weight", torch.ones(num_features));
+                this.register_buffer("bias", torch.zeros(num_features));
+                this.register_buffer("running_mean", torch.zeros(num_features));
+                this.register_buffer("running_var", torch.ones(num_features));
+            }
+
+            public override (IList<string> missing_keys, IList<string> unexpected_keyes, IList<string> error_msgs) _load_from_state_dict(Dictionary<string, Tensor> state_dict, string prefix, Dictionary<string, object> local_metadata, bool strict)
+            {
+                var num_batches_tracked_key = prefix + "num_batches_tracked";
+                if (state_dict.ContainsKey(num_batches_tracked_key))
+                    state_dict.Remove(num_batches_tracked_key);
+
+                return base._load_from_state_dict(state_dict, prefix, local_metadata, strict);
+            }
+
+            public override Tensor forward(Tensor x)
+            {
+                //# move reshapes to the beginning
+                //# to make it fuser-friendly
+                var w = this.get_buffer("weight").reshape(1, -1, 1, 1);
+                var b = this.get_buffer("bias").reshape(1, -1, 1, 1);
+                var rv = this.get_buffer("running_var").reshape(1, -1, 1, 1);
+                var rm = this.get_buffer("running_mean").reshape(1, -1, 1, 1);
+                var scale = w * (rv + this.eps).rsqrt();
+                var bias = b - rm * scale;
+                return x * scale + bias;
             }
         }
     }
