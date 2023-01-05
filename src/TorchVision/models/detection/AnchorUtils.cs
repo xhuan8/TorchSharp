@@ -19,16 +19,6 @@ using TorchSharp.Utils;
 
 namespace TorchSharp
 {
-    public static partial class torchvision
-    {
-        public static partial class models
-        {
-            public static partial class detection
-            {
-            }
-        }
-    }
-
     namespace Modules.Detection
     {
         /// <summary>

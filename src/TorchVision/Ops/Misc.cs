@@ -230,6 +230,8 @@ namespace TorchSharp
         {
             private float eps;
 
+            public float Eps { get => eps; set => eps = value; }
+
             /// <summary>
             /// Constructor.
             /// </summary>
