@@ -26,14 +26,14 @@ namespace TorchSharp
         public class ImageList
         {
             public Tensor tensors { get; set; }
-            public List<(int, int)> image_sizes { get; set; }
+            public List<(long, long)> image_sizes { get; set; }
 
             /// <summary>
             /// Constructor
             /// </summary>
             /// <param name="tensors">Tensor containing images.</param>
             /// <param name="image_sizes">List of Tuples each containing size of images.</param>
-            public ImageList(Tensor tensors, List<(int, int)> image_sizes)
+            public ImageList(Tensor tensors, List<(long, long)> image_sizes)
             {
                 this.tensors = tensors;
                 this.image_sizes = image_sizes;
