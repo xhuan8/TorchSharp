@@ -292,7 +292,7 @@ namespace TorchSharp
             }
 
             public (List<Tensor>, List<Tensor>) filter_proposals(Tensor proposals, Tensor objectness,
-                List<(long, long)> image_shapes, List<long> num_anchors_per_level)
+                List<long[]> image_shapes, List<long> num_anchors_per_level)
             {
                 var num_images = proposals.shape[0];
                 var device = proposals.device;
@@ -326,7 +326,7 @@ namespace TorchSharp
                     var lvl = levels_tensor[i];
                     var img_shape = image_shapes[i];
 
-                    boxes = torchvision.ops.clip_boxes_to_image(boxes, new long[] { img_shape.Item1, img_shape.Item2 });
+                    boxes = torchvision.ops.clip_boxes_to_image(boxes, new long[] { img_shape[0], img_shape[1] });
 
                     //# remove small boxes
                     var keep = torchvision.ops.remove_small_boxes(boxes, this.min_size);

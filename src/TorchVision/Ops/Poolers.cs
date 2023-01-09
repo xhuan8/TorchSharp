@@ -38,16 +38,16 @@ namespace TorchSharp
                 return new LevelMapper(k_min, k_max, canonical_scale, canonical_level, eps);
             }
 
-            internal static Tensor _convert_to_roi_format(List<Tensor> boxes)
+            internal static Tensor _convert_to_roi_format(IList<Tensor> boxes)
             {
                 var concat_boxes = torch.cat(boxes, dim: 0);
-                (device, dtype) = (concat_boxes.device, concat_boxes.dtype);
+                var (device, dtype) = (concat_boxes.device, concat_boxes.dtype);
                 var ids = new List<Tensor>();
                 for (int i = 0; i < boxes.Count; i++)
-                    ids.Add(torch.full_like(boxes[i][TensorIndex.Colon, TensorIndex.Slice(stop: 1)], i, dtype: dtype, layout: torch.strided, device: device));
+                    ids.Add(torch.full_like(boxes[i][TensorIndex.Colon, TensorIndex.Slice(stop: 1)], i, dtype: dtype, device: device));
 
                 var id = torch.cat(ids, dim: 0);
-                rois = torch.cat(new List<Tensor> { id, concat_boxes }, dim: 1);
+                var rois = torch.cat(new List<Tensor> { id, concat_boxes }, dim: 1);
                 return rois;
             }
 
@@ -56,11 +56,11 @@ namespace TorchSharp
                 // assumption: the scale is of the form 2 ** (-k), with k integer
                 var size = new long[] { feature.shape[feature.shape.Length - 2], feature.shape[feature.shape.Length - 1] };
                 List<float> possible_scales = new List<float>();
-                for (int i = 0; i < size.Count; i++) {
+                for (int i = 0; i < size.Length; i++) {
                     var s1 = size[i];
                     var s2 = original_size[i];
                     var approx_scale = (s1) / (s2);
-                    var scale = (float)Math.Pow(2, torch.tensor(approx_scale).log2().round());
+                    var scale = (float)Math.Pow(2, torch.tensor(approx_scale).log2().round().item<float>());
                     possible_scales.Add(scale);
                 }
 
@@ -72,13 +72,13 @@ namespace TorchSharp
             {
                 if (image_shapes == null || image_shapes.Count == 0)
                     throw new ArgumentException("images list should not be empty");
-                var max_x = 0;
-                var max_y = 0;
+                long max_x = 0;
+                long max_y = 0;
                 foreach (var shape in image_shapes) {
                     max_x = Math.Max(shape[0], max_x);
                     max_y = Math.Max(shape[1], max_y);
                 }
-                var original_input_shape = (max_x, max_y);
+                var original_input_shape = new List<long> { max_x, max_y };
 
                 var scales = features.Select(feat => _infer_scale(feat, original_input_shape)).ToList();
                 //# get the levels in the feature map by leveraging the fact that the network always
@@ -116,9 +116,9 @@ namespace TorchSharp
             /// <param name="scales">If None, scales will be automatically infered. Default value is None.</param>
             /// <param name="mapper">If none, mapper will be automatically infered. Default value is None.</param>
             /// <returns></returns>
-            internal static Tensor _multiscale_roi_align(List<Tensor> x_filtered,
-                List<Tensor> boxes, List<long> output_size, long sampling_ratio,
-                List<float> scales, LevelMapper mapper)
+            internal static Tensor _multiscale_roi_align(IList<Tensor> x_filtered,
+                IList<Tensor> boxes, IList<long> output_size, long sampling_ratio,
+                IList<float> scales, LevelMapper mapper)
             {
                 if (scales is null || mapper is null)
                     throw new ArgumentException("scales and mapper should not be None");
@@ -140,13 +140,13 @@ namespace TorchSharp
                 var num_rois = rois.shape[0];
                 var num_channels = x_filtered[0].shape[1];
 
-                (dtype, device) = (x_filtered[0].dtype, x_filtered[0].device);
+                var (dtype, device) = (x_filtered[0].dtype, x_filtered[0].device);
+                List<long> result_size = new List<long>();
+                result_size.Add(num_rois);
+                result_size.Add(num_channels);
+                result_size.AddRange(output_size);
                 var result = torch.zeros(
-                    new long[] {
-                        num_rois,
-                        num_channels,
-                        output_size
-                    },
+                    result_size.ToArray(),
                     dtype: dtype,
                     device: device
                 );
@@ -205,13 +205,13 @@ namespace TorchSharp
                 this.eps = eps;
             }
 
-            public Tensor __call__(List<Tensor> boxlists)
+            public Tensor __call__(IList<Tensor> boxlists)
             {
                 // Compute level ids
-                s = torch.sqrt(torch.cat(boxlists.Select(boxlist => box_area(boxlist))));
+                var s = torch.sqrt(torch.cat(boxlists.Select(boxlist => torchvision.ops.box_area(boxlist)).ToArray()));
 
                 // Eqn.(1) in FPN paper
-                target_lvls = torch.floor(this.lvl0 + torch.log2(s / this.s0) + torch.tensor(this.eps, dtype: s.dtype));
+                var target_lvls = torch.floor(this.lvl0 + torch.log2(s / this.s0) + torch.tensor(this.eps, dtype: s.dtype));
                 target_lvls = torch.clamp(target_lvls, min: this.k_min, max: this.k_max);
                 return (target_lvls.to(torch.int64) - this.k_min).to(torch.int64);
             }
@@ -243,9 +243,9 @@ namespace TorchSharp
         {
             private List<string> featmap_names;
             private long sampling_ratio;
-            private object output_size;
-            private object scales;
-            private object map_levels;
+            private long[] output_size;
+            private List<float> scales;
+            private LevelMapper map_levels;
             private long canonical_scale;
             private long canonical_level;
 
@@ -267,7 +267,7 @@ namespace TorchSharp
             {
                 this.featmap_names = featmap_names;
                 this.sampling_ratio = sampling_ratio;
-                this.output_size = tuple(output_size);
+                this.output_size = output_size.ToArray();
                 this.scales = null;
                 this.map_levels = null;
                 this.canonical_scale = canonical_scale;
@@ -286,7 +286,7 @@ namespace TorchSharp
 
             public void setup_setup_scales(List<Tensor> features, List<long[]> image_shapes)
             {
-                var(this.scales, this.map_levels) = torchvision.ops._setup_scales(features, image_shapes, this.canonical_scale, this.canonical_level);
+                (this.scales, this.map_levels) = torchvision.ops._setup_scales(features, image_shapes, this.canonical_scale, this.canonical_level);
             }
 
             /// <summary>
@@ -305,7 +305,7 @@ namespace TorchSharp
             {
                 var x_filtered = torchvision.ops._filter_input(x, this.featmap_names);
                 if (this.scales is null || this.map_levels is null)
-                    var(this.scales, this.map_levels) = _setup_scales(
+                    (this.scales, this.map_levels) = torchvision.ops._setup_scales(
                         x_filtered, image_shapes, this.canonical_scale, this.canonical_level
                     );
 

@@ -64,7 +64,7 @@ namespace TorchSharp
                     object boxes,
                     object output_size,
                     float spatial_scale = 1.0f,
-                    int sampling_ratio = -1,
+                    long sampling_ratio = -1,
                     bool aligned = false
                 )
             {

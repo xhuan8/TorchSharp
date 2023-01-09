@@ -657,12 +657,15 @@ namespace TorchSharp
                 List<Tensor> labels = null;
                 List<Tensor> regression_targets = null;
                 List<Tensor> matched_idxs = null;
-                if (this.training)
-                    var (proposals, matched_idxs, labels, regression_targets) = this.select_training_samples(proposals, targets);
+                List<Tensor> boxes = null;
+                List<Tensor> scores = null;
+                if (this.training) {
+                    (proposals, matched_idxs, labels, regression_targets) = this.select_training_samples(proposals, targets);
+                }
 
-                Tensor box_features = this.box_roi_pool(features, proposals, image_shapes);
-                box_features = this.box_head(box_features);
-                var (class_logits, box_regression) = this.box_predictor(box_features);
+                Tensor box_features = this.box_roi_pool.forward(features, proposals, image_shapes);
+                box_features = this.box_head.forward(box_features);
+                var (class_logits, box_regression) = this.box_predictor.forward(box_features);
 
                 var result = new List<Dictionary<string, Tensor>>();
                 var losses = new Dictionary<string, Tensor>();
@@ -675,7 +678,7 @@ namespace TorchSharp
                     losses.Add("loss_classifier", loss_classifier);
                     losses.Add("loss_box_reg", loss_box_reg);
                 } else {
-                    var (boxes, scores, labels) = this.postprocess_detections(class_logits, box_regression, proposals, image_shapes);
+                    (boxes, scores, labels) = this.postprocess_detections(class_logits, box_regression, proposals, image_shapes);
                     var num_images = boxes.Count;
                     for (int i = 0; i < num_images; i++) {
                         Dictionary<string, Tensor> dict = new Dictionary<string, Tensor>();
@@ -706,9 +709,9 @@ namespace TorchSharp
 
                     Tensor mask_logits = null;
                     if (this.mask_roi_pool != null) {
-                        Tensor mask_features = this.mask_roi_pool(features, mask_proposals, image_shapes);
-                        mask_features = this.mask_head(mask_features);
-                        mask_logits = this.mask_predictor(mask_features);
+                        Tensor mask_features = this.mask_roi_pool.forward(features, mask_proposals, image_shapes);
+                        mask_features = this.mask_head.forward(mask_features);
+                        mask_logits = this.mask_predictor.forward(mask_features);
                     } else
                         throw new ArgumentException("Expected mask_roi_pool to be not None");
 
@@ -719,13 +722,13 @@ namespace TorchSharp
 
                         var gt_masks = new List<Tensor>(targets.Select(t => t["masks"]));
                         var gt_labels = new List<Tensor>(targets.Select(t => t["labels"]));
-                        var rcnn_loss_mask = maskrcnn_loss(mask_logits, mask_proposals, gt_masks, gt_labels, pos_matched_idxs);
+                        var rcnn_loss_mask = torchvision.models.detection.maskrcnn_loss(mask_logits, mask_proposals, gt_masks, gt_labels, pos_matched_idxs);
 
                         loss_mask.Add("loss_mask", rcnn_loss_mask);
                     } else {
                         labels = new List<Tensor>(result.Select(r => r["labels"]));
-                        var masks_probs = maskrcnn_inference(mask_logits, labels);
-                        for (int i = 0; i < masks_probs.Length; i++)
+                        var masks_probs = torchvision.models.detection.maskrcnn_inference(mask_logits, labels);
+                        for (int i = 0; i < masks_probs.Count; i++)
                             result[i]["masks"] = masks_probs[i];
                     }
 
@@ -760,9 +763,9 @@ namespace TorchSharp
                         }
                     }
 
-                    Tensor keypoint_features = this.keypoint_roi_pool(features, keypoint_proposals, image_shapes);
-                    keypoint_features = this.keypoint_head(keypoint_features);
-                    Tensor keypoint_logits = this.keypoint_predictor(keypoint_features);
+                    Tensor keypoint_features = this.keypoint_roi_pool.forward(features, keypoint_proposals, image_shapes);
+                    keypoint_features = this.keypoint_head.forward(keypoint_features);
+                    Tensor keypoint_logits = this.keypoint_predictor.forward(keypoint_features);
 
                     var loss_keypoint = new Dictionary<string, Tensor>();
                     if (this.training) {
@@ -775,10 +778,10 @@ namespace TorchSharp
                         );
                         loss_keypoint.Add("loss_keypoint", rcnn_loss_keypoint);
                     } else {
-                        if (keypoint_logits == null || keypoint_proposals == null)
+                        if (keypoint_logits is null || keypoint_proposals is null)
                             throw new ArgumentException(
                                 "both keypoint_logits and keypoint_proposals should not be None when not in training mode");
-                        var (keypoints_probs, kp_scores) = keypointrcnn_inference(keypoint_logits, keypoint_proposals);
+                        var (keypoints_probs, kp_scores) = torchvision.models.detection.keypointrcnn_inference(keypoint_logits, keypoint_proposals);
                         for (int i = 0; i < keypoints_probs.Count; i++) {
                             result[i]["keypoints"] = keypoints_probs[i];
                             result[i]["keypoints_scores"] = kp_scores[i];
