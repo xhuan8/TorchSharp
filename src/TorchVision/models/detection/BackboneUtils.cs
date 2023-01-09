@@ -22,7 +22,7 @@ using TorchSharp.Utils;
 using TorchSharp.Modules;
 using System.Linq;
 using TorchSharp.Modules.Detection;
-using TorchSharp.Ops;
+using TorchSharp.TorchVision.Ops;
 
 namespace TorchSharp
 {

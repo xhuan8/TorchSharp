@@ -79,36 +79,39 @@ namespace TorchSharp
                 if (res == IntPtr.Zero) { torch.CheckForErrors(); }
                 return new Tensor(res);
             }
+        }
+    }
 
-            /// <summary>
-            /// see roi_align.
-            /// </summary>
-            public class RoIAlign : nn.Module
+    namespace TorchVision.Ops
+    {
+        /// <summary>
+        /// see roi_align.
+        /// </summary>
+        public class RoIAlign : nn.Module
+        {
+            private object output_size;
+            private float spatial_scale;
+            private int sampling_ratio;
+            private bool aligned;
+
+            public RoIAlign(object output_size, float spatial_scale, int sampling_ratio, bool aligned = false)
+                : base(string.Empty)
             {
-                private object output_size;
-                private float spatial_scale;
-                private int sampling_ratio;
-                private bool aligned;
+                this.output_size = output_size;
+                this.spatial_scale = spatial_scale;
+                this.sampling_ratio = sampling_ratio;
+                this.aligned = aligned;
+            }
 
-                public RoIAlign(object output_size, float spatial_scale, int sampling_ratio, bool aligned = false)
-                    : base(string.Empty)
-                {
-                    this.output_size = output_size;
-                    this.spatial_scale = spatial_scale;
-                    this.sampling_ratio = sampling_ratio;
-                    this.aligned = aligned;
-                }
+            public Tensor forward(Tensor input, object rois)
+            {
+                return torchvision.ops.roi_align(input, rois, this.output_size, this.spatial_scale, this.sampling_ratio, this.aligned);
+            }
 
-                public Tensor forward(Tensor input, object rois)
-                {
-                    return torchvision.ops.roi_align(input, rois, this.output_size, this.spatial_scale, this.sampling_ratio, this.aligned);
-                }
-
-                public override string ToString()
-                {
-                    return string.Format("{0}, output_size={1}, spatial_scale={2}, sampling_ratio={3}, aligned={4}",
-                        this.GetType().Name, this.output_size, this.spatial_scale, this.sampling_ratio, this.aligned);
-                }
+            public override string ToString()
+            {
+                return string.Format("{0}, output_size={1}, spatial_scale={2}, sampling_ratio={3}, aligned={4}",
+                    this.GetType().Name, this.output_size, this.spatial_scale, this.sampling_ratio, this.aligned);
             }
         }
     }

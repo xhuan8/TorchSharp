@@ -22,15 +22,7 @@ using static TorchSharp.torchvision;
 
 namespace TorchSharp
 {
-    public static partial class torchvision
-    {
-        public static partial class ops
-        {
-
-        }
-    }
-
-    namespace Ops
+    namespace TorchVision.Ops
     {
         /// <summary>
         /// Base class for the extra block in the FPN.
