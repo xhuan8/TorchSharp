@@ -27,7 +27,7 @@ namespace TorchSharp
             (Dictionary<string, Tensor>, List<Dictionary<string, Tensor>>)>
         {
             private GeneralizedRCNNTransform transform;
-            private nn.Module<Tensor, Tensor> backbone;
+            private nn.Module backbone;
             private RegionProposalNetwork rpn;
             private RoIHeads roi_heads;
 
@@ -42,7 +42,7 @@ namespace TorchSharp
             /// <param name="transform">performs the data transformation from the inputs to feed into the model</param>
             public GeneralizedRCNN(
                 string name,
-                nn.Module<Tensor, Tensor> backbone,
+                nn.Module backbone,
                 RegionProposalNetwork rpn,
                 RoIHeads roi_heads, GeneralizedRCNNTransform transform)
                 : base(name)
@@ -118,11 +118,15 @@ namespace TorchSharp
                         }
                     }
                 }
+                Dictionary<string, Tensor> featuresDic = null;
 
-                var features = this.backbone.forward(imageList.tensors);
-                Dictionary<string, Tensor> featuresDic = new Dictionary<string, Tensor>();
-                if (features is Tensor)
+                if (this.backbone is nn.Module<Tensor, Tensor> module) {
+                    var features = module.forward(imageList.tensors);
+                    featuresDic = new Dictionary<string, Tensor>();
                     featuresDic.Add("0", features);
+                } else if (this.backbone is nn.Module<Tensor, Dictionary<string, Tensor>> dictModule) {
+                    featuresDic = dictModule.forward(imageList.tensors);
+                }
 
                 var (proposals, proposal_losses) = this.rpn.forward(imageList, featuresDic, targets_transformed);
                 var (detections, detector_losses) = this.roi_heads.forward(featuresDic, proposals, imageList.image_sizes, targets_transformed);

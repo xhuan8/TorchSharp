@@ -297,8 +297,10 @@ namespace TorchSharp
                 this.body = new IntermediateLayerGetter(backbone, return_layers: return_layers);
                 this.fpn = new FeaturePyramidNetwork(name, in_channels_list: in_channels_list,
                     out_channels: out_channels, extra_blocks: extra_blocks, norm_layer: norm_layer);
-                this.out_channels = out_channels;
+                this.Out_channels = out_channels;
             }
+
+            public long Out_channels { get => out_channels; set => out_channels = value; }
 
             /// <summary>
             /// Forward.

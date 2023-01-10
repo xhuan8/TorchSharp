@@ -249,6 +249,8 @@ namespace TorchSharp
             private long canonical_scale;
             private long canonical_level;
 
+            public long[] Output_size { get => output_size; set => output_size = value; }
+
             /// <summary>
             /// Constructor.
             /// </summary>
@@ -267,7 +269,7 @@ namespace TorchSharp
             {
                 this.featmap_names = featmap_names;
                 this.sampling_ratio = sampling_ratio;
-                this.output_size = output_size.ToArray();
+                this.Output_size = output_size.ToArray();
                 this.scales = null;
                 this.map_levels = null;
                 this.canonical_scale = canonical_scale;
@@ -312,7 +314,7 @@ namespace TorchSharp
                 return torchvision.ops._multiscale_roi_align(
                     x_filtered,
                     boxes,
-                    this.output_size,
+                    this.Output_size,
                     this.sampling_ratio,
                     this.scales,
                     this.map_levels
