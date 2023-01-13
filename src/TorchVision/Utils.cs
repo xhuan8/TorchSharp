@@ -26,7 +26,7 @@ namespace TorchSharp
                 if (seq == null)
                     return "";
                 if (seq.Length == 1)
-                    return string.Format("'{0}'", seq.GetValue(0));
+                    return $"'{seq.GetValue(0)}'";
 
                 string head = "'";
                 for (int i = 0; i < seq.Length; i++) {

@@ -114,7 +114,7 @@ namespace TorchSharp
                     var in_channels_stage2 = backbone.In_planes / 8;
                     var in_channels_list = new List<long>();
                     foreach (var i in returned_layers)
-                        in_channels_list.Add((long)Math.Pow(in_channels_stage2 * 2, (i - 1)));
+                        in_channels_list.Add(in_channels_stage2 * (long)Math.Pow(2, (i - 1)));
                     var out_channels = 256;
                     return new BackboneWithFPN(string.Empty,
                         backbone, return_layers, in_channels_list, out_channels, extra_blocks: extra_blocks, norm_layer: norm_layer

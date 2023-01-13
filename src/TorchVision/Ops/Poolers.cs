@@ -18,6 +18,7 @@ using System.Linq;
 using Google.Protobuf.Collections;
 using ICSharpCode.SharpZipLib.GZip;
 using TorchSharp.TorchVision.Ops;
+using TorchSharp.Utils;
 using static TorchSharp.torch;
 
 namespace TorchSharp
@@ -95,12 +96,12 @@ namespace TorchSharp
                 return (scales, map_levels);
             }
 
-            internal static List<Tensor> _filter_input(Dictionary<string, Tensor> x, List<string> featmap_names)
+            internal static List<Tensor> _filter_input(OrderedDict<string, Tensor> x, List<string> featmap_names)
             {
                 var x_filtered = new List<Tensor>();
                 foreach (var pair in x)
-                    if (featmap_names.Contains(pair.Key))
-                        x_filtered.Add(pair.Value);
+                    if (featmap_names.Contains(pair.Item1))
+                        x_filtered.Add(pair.Item2);
                 return x_filtered;
             }
 
@@ -239,7 +240,7 @@ namespace TorchSharp
         ///    >>> print(output.shape)
         ///    >>> torch.Size([6, 5, 3, 3])
         /// </summary>
-        public class MultiScaleRoIAlign : nn.Module<Dictionary<string, Tensor>, List<Tensor>, List<long[]>, Tensor>
+        public class MultiScaleRoIAlign : nn.Module<OrderedDict<string, Tensor>, List<Tensor>, List<long[]>, Tensor>
         {
             private List<string> featmap_names;
             private long sampling_ratio;
@@ -303,7 +304,7 @@ namespace TorchSharp
             ///            have been fed to a CNN to obtain feature maps. This allows us to infer the
             ///            scale factor for each one of the levels to be pooled.</param>
             /// <returns></returns>
-            public override Tensor forward(Dictionary<string, Tensor> x, List<Tensor> boxes, List<long[]> image_shapes)
+            public override Tensor forward(OrderedDict<string, Tensor> x, List<Tensor> boxes, List<long[]> image_shapes)
             {
                 var x_filtered = torchvision.ops._filter_input(x, this.featmap_names);
                 if (this.scales is null || this.map_levels is null)

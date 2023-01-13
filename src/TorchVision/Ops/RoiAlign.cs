@@ -110,8 +110,7 @@ namespace TorchSharp
 
             public override string ToString()
             {
-                return string.Format("{0}, output_size={1}, spatial_scale={2}, sampling_ratio={3}, aligned={4}",
-                    this.GetType().Name, this.output_size, this.spatial_scale, this.sampling_ratio, this.aligned);
+                return $"{this.GetType().Name}, output_size={this.output_size}, spatial_scale={this.spatial_scale}, sampling_ratio={this.sampling_ratio}, aligned={this.aligned}";
             }
         }
     }

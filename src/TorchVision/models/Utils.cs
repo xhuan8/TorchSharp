@@ -128,7 +128,7 @@ namespace TorchSharp
                     orig_return_layers[pair.Key] = pair.Value;
                 var layers = new OrderedDict<string, nn.Module>();
                 foreach (var (name, module) in model.named_children()) {
-                    layers[name] = module;
+                    layers.Add(name, module);
                     if (return_layers.ContainsKey(name)) {
                         return_layers.Remove(name);
                     }

@@ -15,6 +15,7 @@ using System.Collections;
 using System.Diagnostics;
 using System;
 using static TorchSharp.torch;
+using TorchSharp.Utils;
 
 namespace TorchSharp
 {
@@ -26,10 +27,10 @@ namespace TorchSharp
         public class GeneralizedRCNN : nn.Module<List<Tensor>, List<Dictionary<string, Tensor>>,
             (Dictionary<string, Tensor>, List<Dictionary<string, Tensor>>)>
         {
-            private GeneralizedRCNNTransform transform;
-            private nn.Module backbone;
-            private RegionProposalNetwork rpn;
-            private RoIHeads roi_heads;
+            internal GeneralizedRCNNTransform transform;
+            internal nn.Module backbone;
+            internal RegionProposalNetwork rpn;
+            internal RoIHeads roi_heads;
 
             /// <summary>
             /// Constructor.
@@ -105,7 +106,7 @@ namespace TorchSharp
 
                         var degenerate_boxes = boxes[TensorIndex.Colon, TensorIndex.Slice(start: 2)]
                             <= boxes[TensorIndex.Colon, TensorIndex.Slice(stop: 2)];
-                        if (degenerate_boxes.any().item<bool>()) {
+                        if (degenerate_boxes.any().cpu().item<bool>()) {
                             // print the first degenerate box
                             var bb_idx = torch.nonzero(degenerate_boxes.any(dim: 1))[0][0];
 
@@ -118,13 +119,13 @@ namespace TorchSharp
                         }
                     }
                 }
-                Dictionary<string, Tensor> featuresDic = null;
+                OrderedDict<string, Tensor> featuresDic = null;
 
                 if (this.backbone is nn.Module<Tensor, Tensor> module) {
                     var features = module.forward(imageList.tensors);
-                    featuresDic = new Dictionary<string, Tensor>();
+                    featuresDic = new OrderedDict<string, Tensor>();
                     featuresDic.Add("0", features);
-                } else if (this.backbone is nn.Module<Tensor, Dictionary<string, Tensor>> dictModule) {
+                } else if (this.backbone is nn.Module<Tensor, OrderedDict<string, Tensor>> dictModule) {
                     featuresDic = dictModule.forward(imageList.tensors);
                 }
 

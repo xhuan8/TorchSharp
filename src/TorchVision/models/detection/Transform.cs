@@ -48,10 +48,15 @@ namespace TorchSharp
                         recompute_scale_factor = true;
                     }
 
+                    var dim = image.dim() - 1;
+                    var scale_factor_list = new List<double>();
+                    if (scale_factor.HasValue)
+                        for (int i = 0; i < dim; i++)
+                            scale_factor_list.Add(scale_factor.Value);
                     image = torch.nn.functional.interpolate(
                         image[torch.TensorIndex.None],
                         size: size != null ? size.ToArray() : null,
-                        scale_factor: scale_factor.HasValue ? new double[] { scale_factor.Value } : null,
+                        scale_factor: scale_factor.HasValue ? scale_factor_list.ToArray() : null,
                         mode: InterpolationMode.Bilinear,
                         recompute_scale_factor: recompute_scale_factor == true,
                         align_corners: false
@@ -251,7 +256,7 @@ namespace TorchSharp
             /// <returns></returns>
             public long torch_choice(List<long> k)
             {
-                var index = (int)(torch.empty(1).uniform_(0.0, (float)(k.Count)).item<int>());
+                var index = (int)(torch.empty(1).uniform_(0.0, (float)(k.Count)).item<float>());
                 return k[index];
             }
 

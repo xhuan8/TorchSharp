@@ -99,7 +99,7 @@ namespace TorchSharp
 
                 foreach (var t in norm_classes)
                     if (!(t.IsSubclassOf(typeof(nn.Module))))
-                        throw new ArgumentException(string.Format("Class {0} is not a subclass of nn.Module.", t));
+                        throw new ArgumentException($"Class {t} is not a subclass of nn.Module.");
 
                 var classes = norm_classes;
 

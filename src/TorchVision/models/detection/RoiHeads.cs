@@ -351,7 +351,7 @@ namespace TorchSharp
 
     namespace Modules.Detection
     {
-        public class RoIHeads : nn.Module<Dictionary<string, Tensor>, List<Tensor>, List<long[]>, List<Dictionary<string, Tensor>>,
+        public class RoIHeads : nn.Module<OrderedDict<string, Tensor>, List<Tensor>, List<long[]>, List<Dictionary<string, Tensor>>,
             (List<Dictionary<string, Tensor>>, Dictionary<string, Tensor>)>
         {
             private Func<Tensor, Tensor, Tensor> box_similarity;
@@ -634,7 +634,7 @@ namespace TorchSharp
             }
 
             public override (List<Dictionary<string, Tensor>>, Dictionary<string, Tensor>) forward(
-                Dictionary<string, Tensor> features,
+                OrderedDict<string, Tensor> features,
                List<Tensor> proposals,
                List<long[]> image_shapes,
                 List<Dictionary<string, Tensor>> targets = null

@@ -145,7 +145,7 @@ namespace TorchSharp
         /// <summary>
         /// Implements Region Proposal Network (RPN).
         /// </summary>
-        public class RegionProposalNetwork : nn.Module<ImageList, Dictionary<string, Tensor>, List<Dictionary<string, Tensor>>, (List<Tensor>, Dictionary<string, Tensor>)>
+        public class RegionProposalNetwork : nn.Module<ImageList, OrderedDict<string, Tensor>, List<Dictionary<string, Tensor>>, (List<Tensor>, Dictionary<string, Tensor>)>
         {
             private AnchorGenerator anchor_generator;
             private nn.Module<List<Tensor>, (List<Tensor>, List<Tensor>)> head;
@@ -391,7 +391,7 @@ namespace TorchSharp
             ///            losses (Dict[str, Tensor]): the losses for the model during training. During
             ///                testing, it is an empty dict.</returns>
             public override (List<Tensor>, Dictionary<string, Tensor>) forward(ImageList images,
-                Dictionary<string, Tensor> features, List<Dictionary<string, Tensor>> targets)
+                OrderedDict<string, Tensor> features, List<Dictionary<string, Tensor>> targets)
             {
                 //# RPN uses all feature maps that are available
                 var features_list = features.Values.ToList();

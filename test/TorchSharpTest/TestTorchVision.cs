@@ -419,23 +419,24 @@ namespace TorchSharp
                     Config.Classes, null);
             var valid_dataset = new CustomDataset(Config.EvalDir, Config.ImageWidth, Config.ImageHeight,
                     Config.Classes, null);
-            var train_loader = new DataLoader<(Tensor, Dictionary<string, Tensor>), (IEnumerable<Tensor>, IEnumerable<Dictionary<string, Tensor>>)>(train_dataset, Config.BatchSize, FasterRCNNUtils.collate_fn, shuffle: true);
-            var valid_loader = new DataLoader<(Tensor, Dictionary<string, Tensor>), (IEnumerable<Tensor>, IEnumerable<Dictionary<string, Tensor>>)>(valid_dataset, Config.BatchSize, FasterRCNNUtils.collate_fn, shuffle: false);
-            Console.WriteLine(string.Format("Number of training samples: {0}", train_dataset.Count));
-            Console.WriteLine(string.Format("Number of validation samples: {0}\n", valid_dataset.Count));
+            var train_loader = new DataLoader<(Tensor, Dictionary<string, Tensor>), (IEnumerable<Tensor>, IEnumerable<Dictionary<string, Tensor>>)>(train_dataset, Config.BatchSize, FasterRCNNUtils.collate_fn, shuffle: true, device: Config.Device);
+            var valid_loader = new DataLoader<(Tensor, Dictionary<string, Tensor>), (IEnumerable<Tensor>, IEnumerable<Dictionary<string, Tensor>>)>(valid_dataset, Config.BatchSize, FasterRCNNUtils.collate_fn, shuffle: false, device: Config.Device);
+            Console.WriteLine($"Number of training samples: {train_dataset.Count}");
+            Console.WriteLine($"Number of validation samples: {valid_dataset.Count}\n");
 
             // initialize the model and move to the computation device
             Dictionary<string, object> kwargs = new Dictionary<string, object>();
-            kwargs.Add("max_size", 10000);
-            kwargs.Add("box_detections_per_img", 300);
-            kwargs.Add("rpn_pre_nms_top_n_test", 4000);
-            kwargs.Add("rpn_post_nms_top_n_test", 3000);
-            kwargs.Add("rpn_pre_nms_top_n_train", 4000);
-            kwargs.Add("rpn_post_nms_top_n_train", 3000);
+            kwargs.Add("max_size", 1280L);
+            kwargs.Add("min_size", 1280L);
+            kwargs.Add("box_detections_per_img", 300L);
+            kwargs.Add("rpn_pre_nms_top_n_test", 4000L);
+            kwargs.Add("rpn_post_nms_top_n_test", 3000L);
+            kwargs.Add("rpn_pre_nms_top_n_train", 4000L);
+            kwargs.Add("rpn_post_nms_top_n_train", 3000L);
             kwargs.Add("box_nms_thresh", 0.2f);
             kwargs.Add("box_fg_iou_thresh", 0.7f);
             kwargs.Add("box_bg_iou_thresh", 0.3f);
-            var model = torchvision.models.detection.fasterrcnn_resnet50_fpn("fasterrcnn_resnet50_fpn_coco-258fb6c6.pth", kwargs: kwargs);
+            var model = torchvision.models.detection.fasterrcnn_resnet50_fpn(null, num_classes: Config.NumberClasses, kwargs: kwargs);
             var load_check_point = false;
             if (load_check_point && File.Exists("outputs/best_model.pth")) {
                 model.load("outputs/best_model.pth");
@@ -459,7 +460,7 @@ namespace TorchSharp
 
             // start the training epochs
             for (int epoch = 0; epoch < Config.NumberEpochs; epoch++) {
-                Console.WriteLine(string.Format("\nEPOCH {0} of {1}", epoch + 1, Config.NumberEpochs));
+                Console.WriteLine($"\nEPOCH {epoch + 1} of {Config.NumberEpochs}");
 
                 // reset the training and validation loss histories for the current epoch
                 train_loss_hist.reset();
@@ -470,16 +471,12 @@ namespace TorchSharp
 
                 var train_loss = FasterRCNNUtils.train(train_loader, model, optimizer, train_loss_hist);
                 var val_loss = FasterRCNNUtils.validate(valid_loader, model, val_loss_hist);
-                Console.WriteLine(string.Format("Epoch #{0} train loss: {1:.3f}", epoch + 1,
-                    train_loss_hist.Value));
-                Console.WriteLine(string.Format("Epoch #{0} validation loss: {1:.3f}",
-                    epoch + 1, val_loss_hist.Value));
+                Console.WriteLine($"Epoch #{epoch + 1} train loss: {train_loss_hist.Value:.3f}");
+                Console.WriteLine($"Epoch #{epoch + 1} validation loss: {val_loss_hist.Value:.3f}");
                 var end = DateTime.Now;
 
-                Console.WriteLine(string.Format("Took {0} minutes for epoch {1}",
-                    (end - start).Seconds, epoch));
-                Console.WriteLine(string.Format("Best Epoch #{0} validation loss: {1:.3f}",
-                    save_best_model.Best_valid_epoch, save_best_model.Best_valid_loss));
+                Console.WriteLine($"Took {(end - start).Seconds} minutes for epoch {epoch}");
+                Console.WriteLine($"Best Epoch #{save_best_model.Best_valid_epoch} validation loss: {save_best_model.Best_valid_loss:.3f}");
 
                 // save the best model till now if we have the least loss in the...
                 // ... current epoch

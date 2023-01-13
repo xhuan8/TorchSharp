@@ -27,9 +27,9 @@ namespace Modules.Detection
         public static int NumberWorkers = 0;
 
         public static torch.Device Device = torch.cuda.is_available() ? torch.CUDA : torch.CPU;
-        public static string TraingDir = "D:\\Document\\PinInspection1\\Dataset\\augment";
-        public static string EvalDir = "D:\\Document\\PinInspection1\\Dataset\\eval";
-        public static string TestDir = "D:\\Document\\PinInspection1\\Dataset\\test";
+        public static string TraingDir = "D:\\Document\\PinInspection\\PinImages1\\augment";
+        public static string EvalDir = "D:\\Document\\PinInspection\\PinImages1\\eval";
+        public static string TestDir = "D:\\Document\\PinInspection\\PinImages1\\test";
 
         public static List<string> Classes = new List<string> { "__background__", "S", "MH", "MV", "BH", "BV" };
         public static List<Color> Colors = new List<Color> { Color.FromArgb(0, 0, 0),
@@ -77,7 +77,7 @@ namespace Modules.Detection
             var image = torchvision.io.read_image(image_path);
             // convert BGR to RGB color format
             var index = torch.LongTensor(new long[] { 2, 1, 0 });
-            image[index] = image;
+            image[index] = image.clone();
             image = image.to(ScalarType.Float32);
             var image_resized = functional.resize(image, this.height, this.width);
             image_resized /= 255.0;

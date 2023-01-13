@@ -571,7 +571,7 @@ namespace TorchSharp
                     GenerateGeneralizedRCNNTransform(name, min_size, max_size, image_mean != null ? image_mean : new float[] { 0.485f, 0.456f, 0.406f },
                         image_std != null ? image_std : new float[] { 0.229f, 0.224f, 0.225f }, kwargs: kwargs))
             {
-
+                RegisterComponents();
             }
 
             private static GeneralizedRCNNTransform GenerateGeneralizedRCNNTransform(string name, long min_size, long max_size,
