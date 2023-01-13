@@ -27,11 +27,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using TorchSharp.Modules;
 using TorchSharp.Utils;
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
+using static TorchSharp.torchvision;
 
+#nullable enable
 namespace TorchSharp
 {
     public static partial class torchvision
@@ -58,6 +61,15 @@ namespace TorchSharp
                     }
                     return new_v;
                 }
+
+                internal static T _ovewrite_value_param<T>(T? input, T new_value) where T : IComparable
+                {
+                    if (input is not null)
+                        if (input.CompareTo(new_value) != 0)
+                            throw new ArgumentException(string.Format(
+                                "The parameter '{0}' expected value {1} but got {0} instead.", input, new_value));
+                    return new_value;
+                }
             }
         }
     }
@@ -83,7 +95,7 @@ namespace TorchSharp
         ///     >>>     [('feat1', torch.Size([1, 64, 56, 56])),
         ///     >>>      ('feat2', torch.Size([1, 256, 14, 14]))]
         /// </summary>
-        internal class IntermediateLayerGetter : ModuleDict<Module<Tensor, Tensor>>
+        internal class IntermediateLayerGetter : ModuleDict<Module>
         {
             private Dictionary<string, string> return_layers;
 
@@ -114,9 +126,9 @@ namespace TorchSharp
                 var orig_return_layers = new Dictionary<string, string>();
                 foreach (var pair in return_layers)
                     orig_return_layers[pair.Key] = pair.Value;
-                var layers = new OrderedDict<string, nn.Module<Tensor, Tensor>>();
+                var layers = new OrderedDict<string, nn.Module>();
                 foreach (var (name, module) in model.named_children()) {
-                    layers[name] = module as nn.Module<Tensor, Tensor>;
+                    layers[name] = module;
                     if (return_layers.ContainsKey(name)) {
                         return_layers.Remove(name);
                     }
@@ -132,7 +144,8 @@ namespace TorchSharp
             {
                 OrderedDict<string, Tensor> @out = new OrderedDict<string, Tensor>();
                 foreach (var (moduleName, module) in this.items()) {
-                    x = module.forward(x);
+                    if (module is nn.Module<Tensor, Tensor> common)
+                        x = common.forward(x);
                     if (this.return_layers.ContainsKey(moduleName)) {
                         string out_name = this.return_layers[moduleName];
                         @out[out_name] = x;

@@ -75,8 +75,8 @@ namespace TorchSharp
                     return _resnet_fpn_extractor(backbone, trainable_layers, returned_layers, extra_blocks);
                 }
 
-                public static BackboneWithFPN _resnet_fpn_extractor(ResNet backbone, int trainable_layers, List<int> returned_layers,
-                    ExtraFPNBlock extra_blocks, Func<long, nn.Module<Tensor, Tensor>> norm_layer = null)
+                public static BackboneWithFPN _resnet_fpn_extractor(ResNet backbone, int trainable_layers, List<int> returned_layers = null,
+                    ExtraFPNBlock extra_blocks = null, Func<long, nn.Module<Tensor, Tensor>> norm_layer = null)
                 {
                     //    # select layers that wont be frozen
                     if (trainable_layers < 0 || trainable_layers > 5)

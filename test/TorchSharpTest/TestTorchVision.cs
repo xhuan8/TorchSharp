@@ -1,7 +1,17 @@
 using System.Linq;
 using static TorchSharp.torchvision.models;
 using Xunit;
-
+using System.IO;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using static TorchSharp.torch.utils.data;
+using static TorchSharp.torchvision;
+using System.Reflection.Metadata;
+using static TorchSharp.torch;
+using static TorchSharp.torchvision.transforms;
+using System.Xml;
+using Modules.Detection;
 
 namespace TorchSharp
 {
@@ -398,6 +408,86 @@ namespace TorchSharp
 
             System.IO.File.Delete(outName1);
             System.IO.File.Delete(outName2);
+        }
+
+        [Fact]
+        public void TestFasterRCNNTrain()
+        {
+            torchvision.io.DefaultImager = new torchvision.io.SkiaImager();
+
+            var train_dataset = new CustomDataset(Config.TraingDir, Config.ImageWidth, Config.ImageHeight,
+                    Config.Classes, null);
+            var valid_dataset = new CustomDataset(Config.EvalDir, Config.ImageWidth, Config.ImageHeight,
+                    Config.Classes, null);
+            var train_loader = new DataLoader<(Tensor, Dictionary<string, Tensor>), (IEnumerable<Tensor>, IEnumerable<Dictionary<string, Tensor>>)>(train_dataset, Config.BatchSize, FasterRCNNUtils.collate_fn, shuffle: true);
+            var valid_loader = new DataLoader<(Tensor, Dictionary<string, Tensor>), (IEnumerable<Tensor>, IEnumerable<Dictionary<string, Tensor>>)>(valid_dataset, Config.BatchSize, FasterRCNNUtils.collate_fn, shuffle: false);
+            Console.WriteLine(string.Format("Number of training samples: {0}", train_dataset.Count));
+            Console.WriteLine(string.Format("Number of validation samples: {0}\n", valid_dataset.Count));
+
+            // initialize the model and move to the computation device
+            Dictionary<string, object> kwargs = new Dictionary<string, object>();
+            kwargs.Add("max_size", 10000);
+            kwargs.Add("box_detections_per_img", 300);
+            kwargs.Add("rpn_pre_nms_top_n_test", 4000);
+            kwargs.Add("rpn_post_nms_top_n_test", 3000);
+            kwargs.Add("rpn_pre_nms_top_n_train", 4000);
+            kwargs.Add("rpn_post_nms_top_n_train", 3000);
+            kwargs.Add("box_nms_thresh", 0.2f);
+            kwargs.Add("box_fg_iou_thresh", 0.7f);
+            kwargs.Add("box_bg_iou_thresh", 0.3f);
+            var model = torchvision.models.detection.fasterrcnn_resnet50_fpn("fasterrcnn_resnet50_fpn_coco-258fb6c6.pth", kwargs: kwargs);
+            var load_check_point = false;
+            if (load_check_point && File.Exists("outputs/best_model.pth")) {
+                model.load("outputs/best_model.pth");
+            }
+            model = model.to(Config.Device);
+            // get the model parameters
+            var parameters = model.parameters().Where(p => p.requires_grad);
+            // define the optimizer
+            var optimizer = torch.optim.SGD(parameters, learningRate: 0.001, momentum: 0.9, weight_decay: 0.0005);
+
+            // initialize the Averager class
+            var train_loss_hist = new Averager();
+            var val_loss_hist = new Averager();
+            // train and validation loss lists to store loss values of all...
+            // ... iterations till ena and plot graphs for all iterations
+            var train_loss_list = new List<float>();
+            var val_loss_list = new List<float>();
+
+            // initialize SaveBestModel class
+            var save_best_model = new SaveBestModel();
+
+            // start the training epochs
+            for (int epoch = 0; epoch < Config.NumberEpochs; epoch++) {
+                Console.WriteLine(string.Format("\nEPOCH {0} of {1}", epoch + 1, Config.NumberEpochs));
+
+                // reset the training and validation loss histories for the current epoch
+                train_loss_hist.reset();
+                val_loss_hist.reset();
+
+                // start timer and carry out training and validation
+                var start = DateTime.Now;
+
+                var train_loss = FasterRCNNUtils.train(train_loader, model, optimizer, train_loss_hist);
+                var val_loss = FasterRCNNUtils.validate(valid_loader, model, val_loss_hist);
+                Console.WriteLine(string.Format("Epoch #{0} train loss: {1:.3f}", epoch + 1,
+                    train_loss_hist.Value));
+                Console.WriteLine(string.Format("Epoch #{0} validation loss: {1:.3f}",
+                    epoch + 1, val_loss_hist.Value));
+                var end = DateTime.Now;
+
+                Console.WriteLine(string.Format("Took {0} minutes for epoch {1}",
+                    (end - start).Seconds, epoch));
+                Console.WriteLine(string.Format("Best Epoch #{0} validation loss: {1:.3f}",
+                    save_best_model.Best_valid_epoch, save_best_model.Best_valid_loss));
+
+                // save the best model till now if we have the least loss in the...
+                // ... current epoch
+                save_best_model.__call__(val_loss_hist.Value, epoch, model, optimizer);
+
+                // sleep for 5 seconds after each epoch
+                Thread.Sleep(5);
+            }
         }
     }
 }

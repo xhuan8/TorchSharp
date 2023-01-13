@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation and Contributors.  All Rights Reserved.  See LICENSE in the project root for license information.
 using System;
 using System.Collections.Generic;
+using TorchSharp.Ops;
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 
@@ -95,6 +96,7 @@ namespace TorchSharp
             /// <param name="weights_file">The location of a file containing pre-trained weights for the model.</param>
             /// <param name="skipfc">If true, the last linear layer of the classifier will not be loaded from the weights file.</param>
             /// <param name="device">The device to locate the model on.</param>
+            /// <param name="is_trained">Indicate if this module is pretrained.</param>
             /// <remarks>
             /// Pre-trained weights may be retrieved by using Pytorch and saving the model state-dict
             /// using the exportsd.py script, then loading into the .NET instance:
@@ -122,9 +124,10 @@ namespace TorchSharp
             public static Modules.ResNet resnet50(int num_classes = 1000,
                     string weights_file = null,
                     bool skipfc = true,
-                    Device device = null)
+                    Device device = null,
+                    bool is_trained = false)
             {
-                return Modules.ResNet.ResNet50(num_classes, weights_file, skipfc, device);
+                return Modules.ResNet.ResNet50(num_classes, weights_file, skipfc, device, is_trained);
             }
 
             /// <summary>
@@ -288,7 +291,8 @@ namespace TorchSharp
             public static ResNet ResNet50(int numClasses,
                 string weights_file = null,
                 bool skipfc = true,
-                Device device = null)
+                Device device = null,
+                bool is_trained = false)
             {
                 return new ResNet(
                     "ResNet50",
@@ -297,7 +301,8 @@ namespace TorchSharp
                     numClasses,
                     weights_file,
                     skipfc,
-                    device);
+                    device,
+                    is_trained);
             }
 
             public static ResNet ResNet101(int numClasses,
@@ -336,12 +341,16 @@ namespace TorchSharp
                 int numClasses,
                 string weights_file = null,
                 bool skipfc = true,
-                Device device = null) : base(name)
+                Device device = null,
+                bool is_trained = false) : base(name)
             {
                 var modules = new List<(string, Module<Tensor, Tensor>)>();
 
                 conv1 = Conv2d(3, 64, kernelSize: 7, stride: 2, padding: 3, bias: false);
-                bn1 = BatchNorm2d(64);
+                if (!is_trained)
+                    bn1 = BatchNorm2d(64);
+                else
+                    bn1 = torchvision.ops.FrozenBatchNorm2d(64);
                 relu = ReLU(inplace: true);
                 maxpool = MaxPool2d(kernelSize: 3, stride: 2, padding: 1);
                 MakeLayer(layer1, block, expansion, 64, num_blocks[0], 1);
