@@ -26,7 +26,8 @@ namespace Modules.Detection
         public static int NumberEpochs = 300;
         public static int NumberWorkers = 0;
 
-        public static torch.Device Device = torch.cuda.is_available() ? torch.CUDA : torch.CPU;
+        //public static torch.Device Device = torch.cuda.is_available() ? torch.CUDA : torch.CPU;
+        public static torch.Device Device = torch.CPU;
         public static string TraingDir = "D:\\Document\\PinInspection\\PinImages1\\augment";
         public static string EvalDir = "D:\\Document\\PinInspection\\PinImages1\\eval";
         public static string TestDir = "D:\\Document\\PinInspection\\PinImages1\\test";

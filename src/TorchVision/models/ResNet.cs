@@ -486,7 +486,7 @@ namespace TorchSharp
                 public override Tensor forward(Tensor input)
                 {
                     var x = relu1.forward(bn1.forward(conv1.forward(input)));
-                    x = relu2.forward(bn2.forward(conv2.forward(input)));
+                    x = relu2.forward(bn2.forward(conv2.forward(x)));
                     x = bn3.forward(conv3.forward(x));
 
                     var y = input;

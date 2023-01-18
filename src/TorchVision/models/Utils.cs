@@ -148,7 +148,7 @@ namespace TorchSharp
                         x = common.forward(x);
                     if (this.return_layers.ContainsKey(moduleName)) {
                         string out_name = this.return_layers[moduleName];
-                        @out[out_name] = x;
+                        @out.Add(out_name, x);
                     }
                 }
                 return @out;

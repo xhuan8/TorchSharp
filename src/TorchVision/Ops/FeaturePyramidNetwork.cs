@@ -258,7 +258,7 @@ namespace TorchSharp
             public override (List<Tensor>, List<string>) forward(List<Tensor> x, List<Tensor> y, List<string> names)
             {
                 names.Add("pool");
-                x.Add(nn.functional.max_pool2d(x[-1], 1, 2, 0));
+                x.Add(nn.functional.max_pool2d(x[x.Count - 1], 1, 2, 0));
                 return (x, names);
             }
         }
